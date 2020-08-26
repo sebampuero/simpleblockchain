@@ -5,11 +5,13 @@ public class Transaction {
     private String sender;
     private String receiver;
     private String data;
+    private long timestamp;
 
-    public Transaction(String sender, String receiver, String data) {
+    public Transaction(String sender, String receiver, String data, long timestamp) {
         this.sender = sender;
         this.receiver = receiver;
         this.data = data;
+        this.timestamp = timestamp;
     }
 
     public String getSender() {
@@ -34,6 +36,14 @@ public class Transaction {
 
     public void setData(String data) {
         this.data = data;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
     
 }
