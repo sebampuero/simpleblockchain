@@ -26,6 +26,11 @@ public class ApiController {
     @Autowired
     private Blockchain blockchain;
 
+    @GetMapping("/test")
+    public String test() {
+        return "OK";
+    }
+
     @PostMapping("/add_block")
     public String addBlock(@RequestParam Block block) {
         String proof = block.getHash();
