@@ -1,9 +1,7 @@
 package com.blockchain.example.blockchain;
 
-import java.lang.reflect.InaccessibleObjectException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -44,7 +42,7 @@ public class Blockchain {
 
     private void generateGenesisBlock() {
         Block genesisBlock = new Block(0, Collections.emptyList(), System.currentTimeMillis(), "0");
-        genesisBlock.setHash(genesisBlock.calculateHash());
+        genesisBlock.setHash("0");
         this.chain.add(genesisBlock);
     }
 
@@ -139,6 +137,7 @@ public class Blockchain {
             }
         }
         if(longestChain != null){
+            System.out.println("Updating the chain");
             this.chain = longestChain;
             return true;
         }
@@ -150,6 +149,7 @@ public class Blockchain {
             WebClient client = WebClient.builder().baseUrl(peer).build();
             try {
                 client.post().uri("/api/add_block").bodyValue(block).retrieve().bodyToMono(Void.class).block(Duration.ofSeconds(1));
+                System.out.println("Anouncing new block");
             }
             catch(Exception e) {
                 e.printStackTrace();

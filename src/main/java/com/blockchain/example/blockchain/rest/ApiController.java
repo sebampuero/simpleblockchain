@@ -1,5 +1,6 @@
 package com.blockchain.example.blockchain.rest;
 
+import java.net.InetAddress;
 import java.time.Duration;
 import javax.servlet.http.HttpServletRequest;
 
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -36,8 +36,10 @@ public class ApiController {
     public String addBlock(@RequestBody Block block) {
         String proof = block.getHash();
         boolean added = blockchain.addBlock(block, proof);
-        if(!added)
+        if(!added){
+            System.out.println("discarding block");
             return "The block was discarded by the node";
+        }
         return "Block added to the chain";
     }
 
@@ -76,7 +78,8 @@ public class ApiController {
     @PostMapping("/register_with")
     public String registerWith(@RequestBody String nodeAddress, HttpServletRequest request) {
         try{
-            String hostUrl = "http://localhost" + ":" + request.getLocalPort();
+            InetAddress IP = InetAddress.getLocalHost();
+            String hostUrl = "http://" + IP.getHostAddress() + ":" + request.getLocalPort();
             WebClient client = WebClient.builder().baseUrl(nodeAddress).build();
             String jsonResp = client.post()
                 .uri("/api/register_node")
