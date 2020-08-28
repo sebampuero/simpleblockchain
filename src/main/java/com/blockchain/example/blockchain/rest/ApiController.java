@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,7 +33,7 @@ public class ApiController {
     }
 
     @PostMapping("/add_block")
-    public String addBlock(@RequestParam Block block) {
+    public String addBlock(@RequestBody Block block) {
         String proof = block.getHash();
         boolean added = blockchain.addBlock(block, proof);
         if(!added)
@@ -41,7 +42,7 @@ public class ApiController {
     }
 
     @PostMapping("/new_transaction")
-    public void newTransaction(@RequestParam Transaction transaction) {
+    public void newTransaction(@RequestBody Transaction transaction) {
         transaction.setTimestamp(System.currentTimeMillis());
         blockchain.addNewTransaction(transaction);
     }
@@ -67,19 +68,19 @@ public class ApiController {
     }
 
     @PostMapping("/register_node")
-    public Blockchain registerNode(@RequestParam String nodeAddress) {
+    public Blockchain registerNode(@RequestBody String nodeAddress) {
         blockchain.addPeer(nodeAddress);
         return getChain();
     }
 
     @PostMapping("/register_with")
-    public String registerWith(@RequestParam String nodeAddress, HttpServletRequest request) {
+    public String registerWith(@RequestBody String nodeAddress, HttpServletRequest request) {
         try{
-            String hostUrl = request.getRemoteAddr() + ":" + request.getRemotePort();
-            WebClient client = WebClient.builder().baseUrl(hostUrl).build();
+            String hostUrl = "http://localhost" + ":" + request.getLocalPort();
+            WebClient client = WebClient.builder().baseUrl(nodeAddress).build();
             String jsonResp = client.post()
-                .uri("/register_node")
-                .bodyValue(nodeAddress)
+                .uri("/api/register_node")
+                .bodyValue(hostUrl)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .bodyToMono(String.class)

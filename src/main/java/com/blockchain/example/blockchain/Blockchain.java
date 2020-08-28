@@ -3,6 +3,7 @@ package com.blockchain.example.blockchain;
 import java.lang.reflect.InaccessibleObjectException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -43,6 +44,7 @@ public class Blockchain {
 
     private void generateGenesisBlock() {
         Block genesisBlock = new Block(0, Collections.emptyList(), System.currentTimeMillis(), "0");
+        genesisBlock.setHash(genesisBlock.calculateHash());
         this.chain.add(genesisBlock);
     }
 
@@ -50,7 +52,7 @@ public class Blockchain {
         block.setNonce(0);
 
         String hash = block.calculateHash();
-        while(!hash.startsWith("00")) { 
+        while(!hash.startsWith("00")) { // maybe use a thread for this?
             block.setNonce(block.getNonce() + 1);
             hash = block.calculateHash();
         }
@@ -71,12 +73,10 @@ public class Blockchain {
     }
 
     private static Boolean isValidProof(Block block, String block_hash) {
-        return (block_hash.startsWith("00") && block_hash == block.calculateHash());
+        return (block_hash.startsWith("00") && block_hash.equals(block.calculateHash()));
     }
 
     public  Block getLastBlock() {
-        if(this.chain.size() == 0)
-            throw new InaccessibleObjectException();
         return this.chain.get(this.chain.size() - 1);
     }
 
@@ -90,7 +90,7 @@ public class Blockchain {
 
         Block lastBlock = this.getLastBlock();
         Block newBlock = new Block(lastBlock.getIndex() + 1, 
-                                    this.unconfirmedTransactions, 
+                                    new ArrayList<>(this.unconfirmedTransactions), 
                                     System.currentTimeMillis(), 
                                     lastBlock.getHash());
         String proof = this.proofOfWork(newBlock);
@@ -125,7 +125,7 @@ public class Blockchain {
         for ( String peer : this.peersAddresses) {
             WebClient client = WebClient.builder().baseUrl(peer).build();
             try {
-                Mono<String> responseMono = client.get().uri("/chain").accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(String.class);
+                Mono<String> responseMono = client.get().uri("/api/chain").accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(String.class);
                 String chainJson = responseMono.block(Duration.ofSeconds(1));
                 Blockchain blockchain = new Gson().fromJson(chainJson, Blockchain.class);
                 if(blockchain.getChain().size() > currentLength && Blockchain.checkChainValidity(blockchain.getChain())){
@@ -147,9 +147,9 @@ public class Blockchain {
 
     public void announceNewBlock(Block block) {
         for(String peer : this.peersAddresses) {
-            WebClient client = WebClient.builder().baseUrl("http://"+peer).build();
+            WebClient client = WebClient.builder().baseUrl(peer).build();
             try {
-                client.post().uri("/add_block").bodyValue(block).retrieve().bodyToMono(Void.class).block(Duration.ofSeconds(1));
+                client.post().uri("/api/add_block").bodyValue(block).retrieve().bodyToMono(Void.class).block(Duration.ofSeconds(1));
             }
             catch(Exception e) {
                 e.printStackTrace();

@@ -1,8 +1,10 @@
 package com.blockchain.example.blockchain;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.google.gson.Gson;
+
+import org.apache.commons.codec.digest.DigestUtils;
 
 public class Block {
 
@@ -23,7 +25,7 @@ public class Block {
 
     public String calculateHash() {
         String jsonString = new Gson().toJson(this);
-        return BCrypt.withDefaults().hash(12, jsonString.toCharArray()).toString();
+        return DigestUtils.sha256Hex(jsonString);
     }
 
     public int getIndex() {
