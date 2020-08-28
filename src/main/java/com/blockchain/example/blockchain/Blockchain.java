@@ -41,8 +41,7 @@ public class Blockchain {
     }
 
     private void generateGenesisBlock() {
-        Block genesisBlock = new Block(0, Collections.emptyList(), System.currentTimeMillis(), "0");
-        genesisBlock.setTimestamp(0);
+        Block genesisBlock = new Block(0, Collections.emptyList(), 0, "0");
         genesisBlock.setHash(genesisBlock.calculateHash());
         this.chain.add(genesisBlock);
     }
@@ -61,7 +60,7 @@ public class Blockchain {
 
     public Boolean addBlock(Block block, String proof) {
         String previousHash = this.getLastBlock().getHash();
-        if(previousHash != block.getPreviousHash())
+        if(!previousHash.equals(block.getPreviousHash()))
             return false;
         if(!Blockchain.isValidProof(block, proof))
             return false;
