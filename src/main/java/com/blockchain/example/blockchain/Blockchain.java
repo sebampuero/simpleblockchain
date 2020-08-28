@@ -42,7 +42,8 @@ public class Blockchain {
 
     private void generateGenesisBlock() {
         Block genesisBlock = new Block(0, Collections.emptyList(), System.currentTimeMillis(), "0");
-        genesisBlock.setHash("0");
+        genesisBlock.setTimestamp(0);
+        genesisBlock.setHash(genesisBlock.calculateHash());
         this.chain.add(genesisBlock);
     }
 

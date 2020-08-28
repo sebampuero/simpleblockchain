@@ -39,6 +39,10 @@ public class Block {
         return timestamp;
     }
 
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
     public String getPreviousHash() {
         return previousHash;
     }
