@@ -36,10 +36,8 @@ public class ApiController {
     public String addBlock(@RequestBody Block block) {
         String proof = block.getHash();
         boolean added = blockchain.addBlock(block, proof);
-        if(!added){
-            System.out.println("discarding block");
+        if(!added)
             return "The block was discarded by the node";
-        }
         return "Block added to the chain";
     }
 
@@ -87,7 +85,7 @@ public class ApiController {
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .bodyToMono(String.class)
-                .block(Duration.ofSeconds(1));
+                .block(Duration.ofSeconds(10));
             Blockchain blockchain = new Gson().fromJson(jsonResp, Blockchain.class);
             this.blockchain = Blockchain.createChainFromDump(blockchain.getChain());
             this.blockchain.updatePeers(blockchain.getPeers());

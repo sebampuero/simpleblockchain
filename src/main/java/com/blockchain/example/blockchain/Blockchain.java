@@ -149,7 +149,7 @@ public class Blockchain {
             WebClient client = WebClient.builder().baseUrl(peer).build();
             try {
                 client.post().uri("/api/add_block").bodyValue(block).retrieve().bodyToMono(Void.class).block(Duration.ofSeconds(1));
-                System.out.println("Anouncing new block");
+                System.out.println("Announcing new block");
             }
             catch(Exception e) {
                 e.printStackTrace();

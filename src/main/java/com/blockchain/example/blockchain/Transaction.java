@@ -45,5 +45,12 @@ public class Transaction {
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
     }
+
+    @Override
+    public String toString() {
+        return "Transaction [data=" + data + ", receiver=" + receiver + ", sender=" + sender + ", timestamp="
+                + timestamp + "]";
+    }
+
     
 }
