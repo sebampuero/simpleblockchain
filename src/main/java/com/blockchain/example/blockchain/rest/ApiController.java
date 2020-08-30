@@ -2,6 +2,9 @@ package com.blockchain.example.blockchain.rest;
 
 import java.net.InetAddress;
 import java.time.Duration;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import javax.servlet.http.HttpServletRequest;
 
 import com.blockchain.example.blockchain.Block;
@@ -49,7 +52,7 @@ public class ApiController {
 
     @GetMapping("/chain")
     public Blockchain getChain() {
-        return blockchain;
+        return this.blockchain;
     }
 
     @GetMapping("/mine")
@@ -76,8 +79,8 @@ public class ApiController {
     @PostMapping("/register_with")
     public String registerWith(@RequestBody String nodeAddress, HttpServletRequest request) {
         try{
-            InetAddress IP = InetAddress.getLocalHost();
-            String hostUrl = "http://" + IP.getHostAddress() + ":" + request.getLocalPort();
+            //InetAddress IP = InetAddress.getLocalHost();
+            String hostUrl = "http://192.168.0.100:8080";//"http://" + IP.getHostAddress() + ":" + request.getLocalPort();
             WebClient client = WebClient.builder().baseUrl(nodeAddress).build();
             String jsonResp = client.post()
                 .uri("/api/register_node")
@@ -86,9 +89,11 @@ public class ApiController {
                 .retrieve()
                 .bodyToMono(String.class)
                 .block(Duration.ofSeconds(10));
-            Blockchain blockchain = new Gson().fromJson(jsonResp, Blockchain.class);
-            this.blockchain = Blockchain.createChainFromDump(blockchain.getChain());
-            this.blockchain.updatePeers(blockchain.getPeers());
+            Blockchain peerBlockchain = new Gson().fromJson(jsonResp, Blockchain.class);
+            this.blockchain = Blockchain.createChainFromDump(peerBlockchain.getChain(), this.blockchain.getPeersAddresses());
+            Set<String> peers = peerBlockchain.getPeersAddresses();
+            peers = peers.stream().filter( peer -> !hostUrl.equals(peer)).collect(Collectors.toSet());
+            this.blockchain.updatePeers(peers);
             return "Registration successful";
 
         }catch(Exception e) {

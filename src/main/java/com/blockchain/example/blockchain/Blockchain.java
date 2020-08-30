@@ -33,12 +33,11 @@ public class Blockchain {
     }
 
     public void updatePeers(Set<String> peers) {
-        this.peersAddresses.addAll(peers);
+        if(peers.size() > 0)
+            this.peersAddresses.addAll(peers);
     }
 
-    public Set<String> getPeers() {
-        return this.peersAddresses;
-    }
+    
 
     private void generateGenesisBlock() {
         Block genesisBlock = new Block(0, Collections.emptyList(), 0, "0");
@@ -158,8 +157,9 @@ public class Blockchain {
         }
     }
 
-    public static Blockchain createChainFromDump(List<Block> dump) throws Exception {
+    public static Blockchain createChainFromDump(List<Block> dump, Set<String> ourPeers) throws Exception {
         Blockchain generatedChain = new Blockchain();
+        generatedChain.setPeersAddresses(ourPeers);
         for(int i = 1; i < dump.size(); i++) {
             Block block = new Block(dump.get(i).getIndex(),
                 dump.get(i).getTransactions(), 
@@ -171,6 +171,14 @@ public class Blockchain {
                 throw new Exception("Chain dump is tampered");
         }
         return generatedChain;
+    }
+
+    public Set<String> getPeersAddresses() {
+        return peersAddresses;
+    }
+
+    public void setPeersAddresses(Set<String> peersAddresses) {
+        this.peersAddresses = peersAddresses;
     }
     
 }
