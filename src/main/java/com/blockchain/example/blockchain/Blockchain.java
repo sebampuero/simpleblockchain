@@ -1,6 +1,5 @@
 package com.blockchain.example.blockchain;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -10,12 +9,10 @@ import java.util.Set;
 import com.google.gson.Gson;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @Component
 public class Blockchain {
@@ -39,8 +36,6 @@ public class Blockchain {
         if(peers.size() > 0)
             this.peersAddresses.addAll(peers);
     }
-
-    
 
     private void generateGenesisBlock() {
         Block genesisBlock = new Block(0, Collections.emptyList(), 0, "0");
@@ -122,7 +117,6 @@ public class Blockchain {
     public Disposable consensus() {
         Flux<String> peersFlux = Flux.fromIterable(this.peersAddresses);
         return peersFlux.subscribe(peer -> {
-            System.out.println("During consensus");
             WebClient client = WebClient.builder().baseUrl(peer).build();
             client.get()
                 .uri("/api/chain")
@@ -141,24 +135,19 @@ public class Blockchain {
     }
 
     public void announceNewBlock(Block block) {
-        for(String peer : this.peersAddresses) {
+        Flux.fromIterable(this.peersAddresses).subscribe(peer -> {
             WebClient client = WebClient.builder().baseUrl(peer).build();
-            try {
-                client
-                    .post()
+            client.post()
                     .uri("/api/add_block")
                     .bodyValue(block)
                     .exchange()
                     .subscribe(response -> {
                         if(response.statusCode().is2xxSuccessful())
                             System.out.println("Announcing new block");
+                    }, error -> {
+                        System.out.println(error.getMessage());
                     });
-            }
-            catch(Exception e) {
-                e.printStackTrace();
-                System.out.println("Problem sending new block to peer " + peer);
-            }
-        }
+        });
     }
 
     public static Blockchain createChainFromDump(List<Block> dump, Set<String> ourPeers) throws Exception {

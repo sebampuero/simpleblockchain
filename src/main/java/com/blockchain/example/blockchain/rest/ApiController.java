@@ -19,8 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import reactor.core.Disposable;
-
 
 @RestController // makes all methods ResponseBody annotated. All methods get parsed to JSON
                 // automatically when sending response
@@ -60,9 +58,7 @@ public class ApiController {
         int result = blockchain.mine();
         if(result != -1){
             int chainLength = blockchain.getChain().size();
-            System.out.println("before consensus");
             blockchain.consensus();
-            System.out.println("After consensus");
             if(chainLength == blockchain.getChain().size()){
                 blockchain.announceNewBlock(blockchain.getLastBlock());
             }
@@ -81,7 +77,7 @@ public class ApiController {
     @PostMapping("/register_with")
     public void registerWith(@RequestBody String nodeAddress, HttpServletRequest request) {
         //InetAddress IP = InetAddress.getLocalHost();
-        String hostUrl = "http://192.168.0.100:8080";//"http://" + IP.getHostAddress() + ":" + request.getLocalPort();
+        String hostUrl = "http://10.8.0.3:8080";//"http://" + IP.getHostAddress() + ":" + request.getLocalPort();
         WebClient client = WebClient.builder().baseUrl(nodeAddress).build();
         client.post()
             .uri("/api/register_node")
