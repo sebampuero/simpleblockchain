@@ -10,8 +10,11 @@ import java.util.Set;
 import com.google.gson.Gson;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -116,39 +119,40 @@ public class Blockchain {
         return result;
     }
 
-    public boolean consensus() {
-        List<Block> longestChain = null;
-        int currentLength = this.chain.size();
-        for ( String peer : this.peersAddresses) {
+    public Disposable consensus() {
+        Flux<String> peersFlux = Flux.fromIterable(this.peersAddresses);
+        return peersFlux.subscribe(peer -> {
+            System.out.println("During consensus");
             WebClient client = WebClient.builder().baseUrl(peer).build();
-            try {
-                Mono<String> responseMono = client.get().uri("/api/chain").accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(String.class);
-                String chainJson = responseMono.block(Duration.ofSeconds(1));
-                Blockchain blockchain = new Gson().fromJson(chainJson, Blockchain.class);
-                if(blockchain.getChain().size() > currentLength && Blockchain.checkChainValidity(blockchain.getChain())){
-                    longestChain = blockchain.getChain();
-                    currentLength = blockchain.getChain().size();
-                }
-            }
-            catch(Exception e) {
-                e.printStackTrace();
-                System.out.println("Problem connecting to peer or parsing its response " + peer);
-            }
-        }
-        if(longestChain != null){
-            System.out.println("Updating the chain");
-            this.chain = longestChain;
-            return true;
-        }
-        return false;
+            client.get()
+                .uri("/api/chain")
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToMono(String.class)
+                .subscribe(responseJson -> {
+                    Blockchain blockchain = new Gson().fromJson(responseJson, Blockchain.class);
+                    if(blockchain.getChain().size() > this.chain.size() && Blockchain.checkChainValidity(blockchain.getChain())){
+                        this.chain = blockchain.getChain();
+                    }
+                }, error -> {
+                    System.out.println(error.getMessage());
+                });
+        });
     }
 
     public void announceNewBlock(Block block) {
         for(String peer : this.peersAddresses) {
             WebClient client = WebClient.builder().baseUrl(peer).build();
             try {
-                client.post().uri("/api/add_block").bodyValue(block).retrieve().bodyToMono(Void.class).block(Duration.ofSeconds(1));
-                System.out.println("Announcing new block");
+                client
+                    .post()
+                    .uri("/api/add_block")
+                    .bodyValue(block)
+                    .exchange()
+                    .subscribe(response -> {
+                        if(response.statusCode().is2xxSuccessful())
+                            System.out.println("Announcing new block");
+                    });
             }
             catch(Exception e) {
                 e.printStackTrace();
