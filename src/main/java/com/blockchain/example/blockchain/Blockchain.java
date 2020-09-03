@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -124,22 +125,34 @@ public class Blockchain {
         return result;
     }
 
-    public Disposable consensus() {
-        Flux<String> peersFlux = Flux.fromIterable(this.peersAddresses);
-        return peersFlux.subscribe(peer -> {
-            WebClient client = WebClient.builder().baseUrl(peer).build();
-            client.get()
-                .uri("/api/chain")
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .bodyToMono(String.class)
-                .subscribe(responseJson -> {
-                    Blockchain blockchain = new Gson().fromJson(responseJson, Blockchain.class);
-                    if(blockchain.getChain().size() > this.chain.size() && Blockchain.checkChainValidity(blockchain.getChain())){
-                        this.chain = blockchain.getChain();
-                    }
-                }, error -> {
-                    System.out.println(error.getMessage());
+    public CompletableFuture<Void> consensus() {
+        List<CompletableFuture<CompletableFuture<HttpResponse<String>>>> futures = this.peersAddresses.stream()
+            .map(peer -> applyConsensus(peer))
+            .collect(Collectors.toList());
+        return CompletableFuture.allOf(
+            futures.toArray(new CompletableFuture[futures.size()])
+        );
+    }
+
+    private CompletableFuture<CompletableFuture<HttpResponse<String>>> applyConsensus(final String peer) {
+        return CompletableFuture.supplyAsync(() -> {
+            final HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(peer + "/api/chain"))
+                .header("Content-Type", "application/json")
+                .GET()
+                .build();
+            final HttpClient client = HttpClient.newHttpClient();
+            return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+                .orTimeout(5, TimeUnit.SECONDS)
+                .whenComplete((response, throwable) -> {
+                   if(throwable != null || response.statusCode() != 200){
+                       throw new CompletionException("Could not connect to peer " + peer + ", aborting consensus!", throwable);
+                   } else {
+                        Blockchain blockchain = new Gson().fromJson(response.body(), Blockchain.class);
+                        if(blockchain.getChain().size() > this.chain.size() && Blockchain.checkChainValidity(blockchain.getChain())){
+                            this.chain = blockchain.getChain();
+                        }
+                   }
                 });
         });
     }

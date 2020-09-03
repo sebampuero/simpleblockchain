@@ -1,6 +1,14 @@
 package com.blockchain.example.blockchain.rest;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
@@ -58,7 +66,12 @@ public class ApiController {
         int result = blockchain.mine();
         if(result != -1){
             int chainLength = blockchain.getChain().size();
-            blockchain.consensus();
+            try {
+                blockchain.consensus().join();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return e.getMessage() + ". Aborting consensus";
+            }
             if(chainLength == blockchain.getChain().size()){
                 blockchain.announceNewBlock(blockchain.getLastBlock());
             }
@@ -75,27 +88,37 @@ public class ApiController {
     }
 
     @PostMapping("/register_with")
-    public void registerWith(@RequestBody String nodeAddress, HttpServletRequest request) {
+    public String registerWith(@RequestBody String nodeAddress, HttpServletRequest request) {
         //InetAddress IP = InetAddress.getLocalHost();
         String hostUrl = "http://10.8.0.3:8080";//"http://" + IP.getHostAddress() + ":" + request.getLocalPort();
-        WebClient client = WebClient.builder().baseUrl(nodeAddress).build();
-        client.post()
-            .uri("/api/register_node")
-            .bodyValue(hostUrl)
-            .accept(MediaType.APPLICATION_JSON)
-            .retrieve()
-            .bodyToMono(String.class)
-            .subscribe(response -> {
+        final HttpClient client = HttpClient.newHttpClient();
+        final HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(nodeAddress + "/api/register_node"))
+                .POST(HttpRequest.BodyPublishers.ofString(hostUrl))
+                .build();
+        try {
+            HttpResponse<String> httpResponse =  client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+            .orTimeout(5, TimeUnit.SECONDS)
+            .whenComplete((response, throwable) -> {
                 try {
-                    Blockchain peerBlockchain = new Gson().fromJson(response, Blockchain.class);
+                    if (throwable != null)
+                        throw new Exception(throwable.getMessage());
+                    Blockchain peerBlockchain = new Gson().fromJson(response.body(), Blockchain.class);
                     this.blockchain = Blockchain.createChainFromDump(peerBlockchain.getChain(), this.blockchain.getPeersAddresses());
                     Set<String> peers = peerBlockchain.getPeersAddresses();
                     peers = peers.stream().filter( peer -> !hostUrl.equals(peer)).collect(Collectors.toSet());
                     this.blockchain.updatePeers(peers);
-                }catch(Exception e) {
-                    System.out.println(e.toString());
+                } catch (Exception e) {
+                    throw new CompletionException(e.getMessage(), e);
                 }
-            });
+            }).join();
+            if(httpResponse.statusCode() == 200) 
+                return "Registration successful";
+            else
+                return "Registration failed";
+        } catch (CompletionException e) {
+            return "Registration failed because " + e.getMessage();
+        }
     }
 
 }
