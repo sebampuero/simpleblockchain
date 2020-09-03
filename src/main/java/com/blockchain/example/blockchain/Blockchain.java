@@ -1,12 +1,22 @@
 package com.blockchain.example.blockchain;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -135,18 +145,34 @@ public class Blockchain {
     }
 
     public void announceNewBlock(Block block) {
-        Flux.fromIterable(this.peersAddresses).subscribe(peer -> {
-            WebClient client = WebClient.builder().baseUrl(peer).build();
-            client.post()
-                    .uri("/api/add_block")
-                    .bodyValue(block)
-                    .exchange()
-                    .subscribe(response -> {
-                        if(response.statusCode().is2xxSuccessful())
-                            System.out.println("Announcing new block");
-                    }, error -> {
-                        System.out.println(error.getMessage());
-                    });
+        List<CompletableFuture<Void>> futures =  this.peersAddresses.stream()
+                .map(peer -> announceBlockRequest(peer, block))
+                .collect(Collectors.toList());
+        CompletableFuture.allOf(
+            futures.toArray(new CompletableFuture[futures.size()])
+        ).join();
+    }
+
+    private CompletableFuture<Void> announceBlockRequest(final String peer, final Block block) {
+        return CompletableFuture.runAsync(() -> {
+            final HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(peer + "/api/add_block"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(block)))
+                .build();
+            final HttpClient client = HttpClient.newHttpClient();
+            client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+                .orTimeout(5, TimeUnit.SECONDS)
+                .thenApply(HttpResponse::statusCode)
+                .whenComplete((statusCode, throwable) -> {
+                    if (throwable != null || statusCode != 200) {
+                        if (throwable != null) 
+                            System.out.println(throwable.getMessage());
+                        else
+                            System.out.println("Could not announce new block");
+                    } else
+                        System.out.println("Announced new block");
+                });
         });
     }
 
