@@ -23,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -51,9 +52,10 @@ public class ApiController {
     }
 
     @PostMapping("/new_transaction")
-    public void newTransaction(@RequestBody Transaction transaction) {
+    public void newTransaction(@RequestBody Transaction transaction, @RequestHeader("public-key") String pubKey )
+            throws Exception {
         transaction.setTimestamp(System.currentTimeMillis());
-        blockchain.addNewTransaction(transaction);
+        blockchain.addNewTransaction(transaction, pubKey);
     }
 
     @GetMapping("/chain")

@@ -15,16 +15,15 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import com.blockchain.example.blockchain.crypto.Crypto;
 import com.google.gson.Gson;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
-
+/**
+ * Blockchain class. Contains the chain of blocks, and exposes several methods
+ * to mine blocks, check unconfirmed transactions and apply consensus.
+ */
 @Component
 public class Blockchain {
 
@@ -44,7 +43,7 @@ public class Blockchain {
     }
 
     public void updatePeers(Set<String> peers) {
-        if(peers.size() > 0)
+        if (peers.size() > 0)
             this.peersAddresses.addAll(peers);
     }
 
@@ -58,7 +57,7 @@ public class Blockchain {
         block.setNonce(0);
 
         String hash = block.calculateHash();
-        while(!hash.startsWith("00")) { // maybe use a thread for this?
+        while (!hash.startsWith("00")) { // maybe use a thread for this?
             block.setNonce(block.getNonce() + 1);
             hash = block.calculateHash();
         }
@@ -68,11 +67,11 @@ public class Blockchain {
 
     public Boolean addBlock(Block block, String proof) {
         String previousHash = this.getLastBlock().getHash();
-        if(!previousHash.equals(block.getPreviousHash()))
+        if (!previousHash.equals(block.getPreviousHash()))
             return false;
-        if(!Blockchain.isValidProof(block, proof))
+        if (!Blockchain.isValidProof(block, proof))
             return false;
-        
+
         block.setHash(proof);
         this.chain.add(block);
         return true;
@@ -82,11 +81,13 @@ public class Blockchain {
         return (block_hash.startsWith("00") && block_hash.equals(block.calculateHash()));
     }
 
-    public  Block getLastBlock() {
+    public Block getLastBlock() {
         return this.chain.get(this.chain.size() - 1);
     }
 
-    public void addNewTransaction(Transaction transaction) {
+    public void addNewTransaction(Transaction transaction, String publicKey) throws Exception {
+        byte[] pubkey = publicKey.getBytes();
+        transaction.setPublicKey(Crypto.fromBytesToPubKey(pubkey));
         this.unconfirmedTransactions.add(transaction);
     }
 
@@ -96,13 +97,22 @@ public class Blockchain {
 
         Block lastBlock = this.getLastBlock();
         Block newBlock = new Block(lastBlock.getIndex() + 1, 
-                                    new ArrayList<>(this.unconfirmedTransactions), 
+                                    new ArrayList<>(this.verifyTransactions()), 
                                     System.currentTimeMillis(), 
                                     lastBlock.getHash());
         String proof = this.proofOfWork(newBlock);
         this.addBlock(newBlock, proof);
         this.unconfirmedTransactions.clear();
         return newBlock.getIndex();
+    }
+
+    private ArrayList<Transaction> verifyTransactions() {
+        for(Transaction tr : this.unconfirmedTransactions) {
+            // verify
+            // if there is an inconsistency, throw an exception
+        }
+
+        return null;
     }
 
     public List<Block> getChain() {
