@@ -2,6 +2,8 @@ package com.blockchain.example.blockchain;
 
 import java.security.PublicKey;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 public class Transaction {
 
     private String sender;
@@ -25,6 +27,11 @@ public class Transaction {
         this.timestamp = timestamp;
         this.signature = signature;
         this.publicKey = pubKey;
+    }
+
+    public String calculateHash() {
+        String repr = sender + receiver + data + String.valueOf(timestamp);
+        return DigestUtils.sha256Hex(repr);
     }
 
     public String getSender() {

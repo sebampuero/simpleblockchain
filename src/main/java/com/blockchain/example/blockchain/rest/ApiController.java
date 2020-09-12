@@ -6,7 +6,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -19,15 +18,12 @@ import com.blockchain.example.blockchain.Transaction;
 import com.google.gson.Gson;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.reactive.function.client.WebClient;
-
 
 @RestController // makes all methods ResponseBody annotated. All methods get parsed to JSON
                 // automatically when sending response
@@ -46,16 +42,22 @@ public class ApiController {
     public String addBlock(@RequestBody Block block) {
         String proof = block.getHash();
         boolean added = blockchain.addBlock(block, proof);
-        if(!added)
+        if (!added)
             return "The block was discarded by the node";
         return "Block added to the chain";
     }
 
     @PostMapping("/new_transaction")
-    public void newTransaction(@RequestBody Transaction transaction, @RequestHeader("public-key") String pubKey )
-            throws Exception {
+    public String newTransaction(@RequestBody Transaction transaction, 
+                                    @RequestHeader("public-key") String pubKey) {
         transaction.setTimestamp(System.currentTimeMillis());
-        blockchain.addNewTransaction(transaction, pubKey);
+        try {
+            blockchain.addNewTransaction(transaction, pubKey);
+            return "Transaction added";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Could not add transaction: " + e.getMessage();
+        }
     }
 
     @GetMapping("/chain")
@@ -65,22 +67,21 @@ public class ApiController {
 
     @GetMapping("/mine")
     public String mineUnconfirmedTransactions() {
-        int result = blockchain.mine();
-        if(result != -1){
-            int chainLength = blockchain.getChain().size();
-            try {
+        try {
+            int result = blockchain.mine();
+            if(result != -1){
+                int chainLength = blockchain.getChain().size();
                 blockchain.consensus().join();
-            } catch (Exception e) {
-                e.printStackTrace();
-                return e.getMessage() + ". Aborting consensus";
+                if(chainLength == blockchain.getChain().size()){
+                    blockchain.announceNewBlock(blockchain.getLastBlock());
+                }
+                return "Block " + blockchain.getLastBlock().getIndex() + " is mined";
             }
-            if(chainLength == blockchain.getChain().size()){
-                blockchain.announceNewBlock(blockchain.getLastBlock());
-            }
-            return "Block " + blockchain.getLastBlock().getIndex() + " is mined";
+            else
+                return "No results to mine";
+        } catch(Exception e) {
+            return "Aborting mining process: " + e.getMessage();
         }
-        else
-            return "No results to mine";
     }
 
     @PostMapping("/register_node")

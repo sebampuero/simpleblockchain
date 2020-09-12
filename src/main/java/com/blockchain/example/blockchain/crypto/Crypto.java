@@ -2,7 +2,6 @@ package com.blockchain.example.blockchain.crypto;
 
 import java.security.KeyFactory;
 import java.security.PublicKey;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
 import javax.crypto.Cipher;
@@ -19,7 +18,7 @@ public class Crypto {
 
     public static byte[] decrypt(byte[] pubkey, byte[] inputData) throws Exception {
         PublicKey pubKey = KeyFactory.getInstance(ALGORITHM)
-            .generatePublic(new PKCS8EncodedKeySpec(pubkey));
+            .generatePublic(new X509EncodedKeySpec(pubkey));
         Cipher cipher = Cipher.getInstance(ALGORITHM);
         cipher.init(Cipher.DECRYPT_MODE, pubKey);
         return cipher.doFinal(inputData);

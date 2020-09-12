@@ -91,7 +91,7 @@ public class Blockchain {
         this.unconfirmedTransactions.add(transaction);
     }
 
-    public int mine() {
+    public int mine() throws Exception {
         if(this.unconfirmedTransactions.size() == 0)
             return -1;
 
@@ -106,13 +106,16 @@ public class Blockchain {
         return newBlock.getIndex();
     }
 
-    private ArrayList<Transaction> verifyTransactions() {
+    private List<Transaction> verifyTransactions() throws Exception{
         for(Transaction tr : this.unconfirmedTransactions) {
-            // verify
-            // if there is an inconsistency, throw an exception
+            String hashA = Crypto
+                .decrypt(tr.getPublicKey().getEncoded(), tr.getSignature().getBytes())
+                .toString();
+            String hashB = tr.calculateHash();
+            if(!hashA.equals(hashB))
+                throw new Exception("Transaction " + tr + " is tampered!");
         }
-
-        return null;
+        return this.unconfirmedTransactions;
     }
 
     public List<Block> getChain() {
