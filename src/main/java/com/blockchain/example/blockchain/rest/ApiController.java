@@ -33,11 +33,6 @@ public class ApiController {
     @Autowired
     private Blockchain blockchain;
 
-    @GetMapping("/test")
-    public String test() {
-        return "OK";
-    }
-
     @PostMapping("/add_block")
     public String addBlock(@RequestBody Block block) {
         String proof = block.getHash();
@@ -50,7 +45,6 @@ public class ApiController {
     @PostMapping("/new_transaction")
     public String newTransaction(@RequestBody Transaction transaction, 
                                     @RequestHeader("public-key") String pubKey) {
-        transaction.setTimestamp(System.currentTimeMillis());
         try {
             blockchain.addNewTransaction(transaction, pubKey);
             return "Transaction added";
@@ -80,6 +74,7 @@ public class ApiController {
             else
                 return "No results to mine";
         } catch(Exception e) {
+            e.printStackTrace();
             return "Aborting mining process: " + e.getMessage();
         }
     }

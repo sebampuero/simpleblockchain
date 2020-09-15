@@ -6,4 +6,4 @@ Node discovery and consensus also implemented.
 ### Improvements to be done in the future (if time lol)
 
 * Add merkle tree implementation for transactions
-* Testing?
+* Add tests

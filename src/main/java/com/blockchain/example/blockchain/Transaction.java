@@ -13,11 +13,8 @@ public class Transaction {
     private String signature;
     private PublicKey publicKey;
 
-    public Transaction(String sender, String receiver, String data, long timestamp) {
-        this.sender = sender;
-        this.receiver = receiver;
-        this.data = data;
-        this.timestamp = timestamp;
+    public Transaction() {
+        
     }
 
     public Transaction(String sender, String receiver, String data, long timestamp, String signature, PublicKey pubKey) {

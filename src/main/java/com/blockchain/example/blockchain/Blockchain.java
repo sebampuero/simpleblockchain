@@ -6,6 +6,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -86,7 +87,7 @@ public class Blockchain {
     }
 
     public void addNewTransaction(Transaction transaction, String publicKey) throws Exception {
-        byte[] pubkey = publicKey.getBytes();
+        byte[] pubkey = Base64.getDecoder().decode(publicKey);
         transaction.setPublicKey(Crypto.fromBytesToPubKey(pubkey));
         this.unconfirmedTransactions.add(transaction);
     }
@@ -108,12 +109,14 @@ public class Blockchain {
 
     private List<Transaction> verifyTransactions() throws Exception{
         for(Transaction tr : this.unconfirmedTransactions) {
-            String hashA = Crypto
-                .decrypt(tr.getPublicKey().getEncoded(), tr.getSignature().getBytes())
-                .toString();
+            byte[] descryptedSignature = Crypto
+                .decrypt(tr.getPublicKey().getEncoded(), Base64.getDecoder().decode(tr.getSignature()));
+            String hashA = new String(descryptedSignature, StandardCharsets.UTF_8);
             String hashB = tr.calculateHash();
-            if(!hashA.equals(hashB))
-                throw new Exception("Transaction " + tr + " is tampered!");
+            if(!hashA.equals(hashB)){
+                this.consensus();
+                throw new Exception("Transaction " + tr + " is tampered! We need to apply consensus again");
+            }
         }
         return this.unconfirmedTransactions;
     }
